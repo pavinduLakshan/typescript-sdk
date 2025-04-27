@@ -1,6 +1,6 @@
 import { Transport } from "../shared/transport.js";
 import { isInitializedNotification, isJSONRPCRequest, isJSONRPCResponse, JSONRPCMessage, JSONRPCMessageSchema } from "../types.js";
-import { auth, AuthResult, OAuthClientProvider, UnauthorizedError } from "./auth.js";
+import { auth, AuthResult, discoverOAuthProtectedResourceMetadata, extractResourceMetadataUrl, OAuthClientProvider, UnauthorizedError } from "./auth.js";
 import { EventSourceParserStream } from "eventsource-parser/stream";
 
 // Default reconnection options for StreamableHTTP connections
@@ -119,6 +119,7 @@ export type StreamableHTTPClientTransportOptions = {
 export class StreamableHTTPClientTransport implements Transport {
   private _abortController?: AbortController;
   private _url: URL;
+  private _authServerUrl: URL | undefined;
   private _requestInit?: RequestInit;
   private _authProvider?: OAuthClientProvider;
   private _sessionId?: string;
@@ -133,6 +134,7 @@ export class StreamableHTTPClientTransport implements Transport {
     opts?: StreamableHTTPClientTransportOptions,
   ) {
     this._url = url;
+    this._authServerUrl = undefined;
     this._requestInit = opts?.requestInit;
     this._authProvider = opts?.authProvider;
     this._sessionId = opts?.sessionId;
@@ -146,7 +148,7 @@ export class StreamableHTTPClientTransport implements Transport {
 
     let result: AuthResult;
     try {
-      result = await auth(this._authProvider, { serverUrl: this._url });
+      result = await auth(this._authProvider, { resourceServerUrl: this._url, authServerUrl: this._authServerUrl });
     } catch (error) {
       this.onerror?.(error as Error);
       throw error;
@@ -225,7 +227,7 @@ export class StreamableHTTPClientTransport implements Transport {
 
   /**
    * Calculates the next reconnection delay using  backoff algorithm
-   * 
+   *
    * @param attempt Current reconnection attempt count for the specific stream
    * @returns Time to wait in milliseconds before next reconnection attempt
    */
@@ -242,7 +244,7 @@ export class StreamableHTTPClientTransport implements Transport {
 
   /**
    * Schedule a reconnection attempt with exponential backoff
-   * 
+   *
    * @param lastEventId The ID of the last received event for resumability
    * @param attemptCount Current reconnection attempt count for this specific stream
    */
@@ -356,7 +358,7 @@ export class StreamableHTTPClientTransport implements Transport {
       throw new UnauthorizedError("No auth provider");
     }
 
-    const result = await auth(this._authProvider, { serverUrl: this._url, authorizationCode });
+    const result = await auth(this._authProvider, { resourceServerUrl: this._url, authorizationCode, authServerUrl: this._authServerUrl });
     if (result !== "AUTHORIZED") {
       throw new UnauthorizedError("Failed to authorize");
     }
@@ -401,7 +403,17 @@ export class StreamableHTTPClientTransport implements Transport {
 
       if (!response.ok) {
         if (response.status === 401 && this._authProvider) {
-          const result = await auth(this._authProvider, { serverUrl: this._url });
+
+          const resourceMetadataUrl = extractResourceMetadataUrl(response);
+          const protectedResourceMetadata = await discoverOAuthProtectedResourceMetadata(this._url, {
+            resourceMetadataUrl: resourceMetadataUrl
+          })
+          if (protectedResourceMetadata.authorization_servers === undefined || protectedResourceMetadata.authorization_servers.length === 0) {
+            throw new Error("Server does not speicify any authorization servers.");
+          }
+          this._authServerUrl = new URL(protectedResourceMetadata.authorization_servers[0]);
+
+          const result = await auth(this._authProvider, { resourceServerUrl: this._url, authServerUrl: this._authServerUrl });
           if (result !== "AUTHORIZED") {
             throw new UnauthorizedError();
           }
@@ -470,12 +482,12 @@ export class StreamableHTTPClientTransport implements Transport {
 
   /**
    * Terminates the current session by sending a DELETE request to the server.
-   * 
+   *
    * Clients that no longer need a particular session
    * (e.g., because the user is leaving the client application) SHOULD send an
    * HTTP DELETE to the MCP endpoint with the Mcp-Session-Id header to explicitly
    * terminate the session.
-   * 
+   *
    * The server MAY respond with HTTP 405 Method Not Allowed, indicating that
    * the server does not allow clients to terminate sessions.
    */
