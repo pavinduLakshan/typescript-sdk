@@ -192,8 +192,8 @@ export function extractResourceMetadataUrl(res: Response): URL | undefined {
 
   try {
     return new URL(match[1]);
-  } catch(error) {
-    console.log("Invalid resource metadata url.");
+  } catch {
+    console.log("Invalid resource metadata url: ", match[1]);
     return undefined;
   }
 }
