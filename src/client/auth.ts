@@ -84,21 +84,14 @@ export class UnauthorizedError extends Error {
  */
 export async function auth(
   provider: OAuthClientProvider,
-  { resourceServerUrl, authorizationCode, authServerUrl }: { resourceServerUrl: string | URL, authorizationCode?: string, authServerUrl?: string | URL }): Promise<AuthResult> {
+  { resourceServerUrl, authorizationCode, protectedResourceMetadata }: { resourceServerUrl: string | URL, authorizationCode?: string, protectedResourceMetadata?: OAuthProtectedResourceMetadata }): Promise<AuthResult> {
 
-  let authorizationServerUrl = authServerUrl
+  let resourceMetadata = protectedResourceMetadata ?? await discoverOAuthProtectedResourceMetadata(resourceServerUrl);
 
-  if (!authorizationServerUrl) {
-    const protectedResourceMetadata = await discoverOAuthProtectedResourceMetadata(resourceServerUrl);
-    if (protectedResourceMetadata.authorization_servers === undefined || protectedResourceMetadata.authorization_servers.length === 0) {
-      throw new Error("Server does not speicify any authorization servers.");
-    }
-    authorizationServerUrl = protectedResourceMetadata.authorization_servers[0];
-  }
-
-  if (!authorizationServerUrl) {
+  if (resourceMetadata.authorization_servers === undefined || resourceMetadata.authorization_servers.length === 0) {
     throw new Error("Server does not speicify any authorization servers.");
   }
+  const authorizationServerUrl = resourceMetadata.authorization_servers[0];
 
   const metadata = await discoverOAuthMetadata(authorizationServerUrl);
 
@@ -157,7 +150,8 @@ export async function auth(
   }
 
   // Start new authorization flow
-  const { authorizationUrl, codeVerifier } = await startAuthorization(resourceServerUrl, authorizationServerUrl, {
+  const { authorizationUrl, codeVerifier } = await startAuthorization(authorizationServerUrl, {
+    resource: resourceMetadata.resource,
     metadata,
     clientInformation,
     redirectUrl: provider.redirectUrl
@@ -288,13 +282,14 @@ export async function discoverOAuthMetadata(
  * Begins the authorization flow with the given server, by generating a PKCE challenge and constructing the authorization URL.
  */
 export async function startAuthorization(
-  resourceServerUrl: string | URL,
   authorizationServerUrl: string | URL,
   {
+    resource,
     metadata,
     clientInformation,
     redirectUrl,
   }: {
+    resource: string | URL;
     metadata?: OAuthMetadata;
     clientInformation: OAuthClientInformation;
     redirectUrl: string | URL;
@@ -338,10 +333,7 @@ export async function startAuthorization(
     codeChallengeMethod,
   );
   authorizationUrl.searchParams.set("redirect_uri", String(redirectUrl));
-
-  const serverURL = new URL(resourceServerUrl)
-  const baseURL = `${serverURL.protocol}//${serverURL.host}`
-  authorizationUrl.searchParams.set("resource", String(baseURL));
+  authorizationUrl.searchParams.set("resource", String(resource));
 
   return { authorizationUrl, codeVerifier };
 }
