@@ -86,7 +86,7 @@ export async function auth(
   provider: OAuthClientProvider,
   { resourceServerUrl, authorizationCode, authServerUrl }: { resourceServerUrl: string | URL, authorizationCode?: string, authServerUrl?: string | URL }): Promise<AuthResult> {
 
-    let authorizationServerUrl = authServerUrl
+  let authorizationServerUrl = authServerUrl
 
   if (!authorizationServerUrl) {
     const protectedResourceMetadata = await discoverOAuthProtectedResourceMetadata(resourceServerUrl);
@@ -157,7 +157,7 @@ export async function auth(
   }
 
   // Start new authorization flow
-  const { authorizationUrl, codeVerifier } = await startAuthorization(authorizationServerUrl, {
+  const { authorizationUrl, codeVerifier } = await startAuthorization(resourceServerUrl, authorizationServerUrl, {
     metadata,
     clientInformation,
     redirectUrl: provider.redirectUrl
@@ -288,6 +288,7 @@ export async function discoverOAuthMetadata(
  * Begins the authorization flow with the given server, by generating a PKCE challenge and constructing the authorization URL.
  */
 export async function startAuthorization(
+  resourceServerUrl: string | URL,
   authorizationServerUrl: string | URL,
   {
     metadata,
@@ -337,6 +338,10 @@ export async function startAuthorization(
     codeChallengeMethod,
   );
   authorizationUrl.searchParams.set("redirect_uri", String(redirectUrl));
+
+  const serverURL = new URL(resourceServerUrl)
+  const baseURL = `${serverURL.protocol}//${serverURL.host}`
+  authorizationUrl.searchParams.set("resource", String(baseURL));
 
   return { authorizationUrl, codeVerifier };
 }

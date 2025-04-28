@@ -320,6 +320,7 @@ describe("OAuth Authorization", () => {
 
     it("generates authorization URL with PKCE challenge", async () => {
       const { authorizationUrl, codeVerifier } = await startAuthorization(
+        "https://resource.example.com",
         "https://auth.example.com",
         {
           clientInformation: validClientInfo,
@@ -330,6 +331,7 @@ describe("OAuth Authorization", () => {
       expect(authorizationUrl.toString()).toMatch(
         /^https:\/\/auth\.example\.com\/authorize\?/
       );
+      expect(authorizationUrl.searchParams.get("resource")).toBe("https://resource.example.com");
       expect(authorizationUrl.searchParams.get("response_type")).toBe("code");
       expect(authorizationUrl.searchParams.get("code_challenge")).toBe("test_challenge");
       expect(authorizationUrl.searchParams.get("code_challenge_method")).toBe(
@@ -343,6 +345,7 @@ describe("OAuth Authorization", () => {
 
     it("uses metadata authorization_endpoint when provided", async () => {
       const { authorizationUrl } = await startAuthorization(
+        "https://resource.example.com",
         "https://auth.example.com",
         {
           metadata: validMetadata,
@@ -363,7 +366,7 @@ describe("OAuth Authorization", () => {
       };
 
       await expect(
-        startAuthorization("https://auth.example.com", {
+        startAuthorization("https://resource.example.com", "https://auth.example.com", {
           metadata,
           clientInformation: validClientInfo,
           redirectUrl: "http://localhost:3000/callback",
@@ -379,7 +382,7 @@ describe("OAuth Authorization", () => {
       };
 
       await expect(
-        startAuthorization("https://auth.example.com", {
+        startAuthorization("https://resource.example.com", "https://auth.example.com", {
           metadata,
           clientInformation: validClientInfo,
           redirectUrl: "http://localhost:3000/callback",
