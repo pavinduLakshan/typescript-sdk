@@ -84,10 +84,10 @@ export class UnauthorizedError extends Error {
  */
 export async function auth(
   provider: OAuthClientProvider,
-<<<<<<< HEAD
-  { resourceServerUrl, authorizationCode, protectedResourceMetadata }: { resourceServerUrl: string | URL, authorizationCode?: string, protectedResourceMetadata?: OAuthProtectedResourceMetadata }): Promise<AuthResult> {
+  { resourceServerUrl, authorizationCode, protectedResourceMetadata, scope }: { resourceServerUrl: string | URL, authorizationCode?: string, protectedResourceMetadata?: OAuthProtectedResourceMetadata, scope?: string;
+ }): Promise<AuthResult> {
 
-  let resourceMetadata = protectedResourceMetadata ?? await discoverOAuthProtectedResourceMetadata(resourceServerUrl);
+  const resourceMetadata = protectedResourceMetadata ?? await discoverOAuthProtectedResourceMetadata(resourceServerUrl);
 
   if (resourceMetadata.authorization_servers === undefined || resourceMetadata.authorization_servers.length === 0) {
     throw new Error("Server does not speicify any authorization servers.");
@@ -95,20 +95,6 @@ export async function auth(
   const authorizationServerUrl = resourceMetadata.authorization_servers[0];
 
   const metadata = await discoverOAuthMetadata(authorizationServerUrl);
-||||||| 7e18c70
-  { serverUrl, authorizationCode }: { serverUrl: string | URL, authorizationCode?: string }): Promise<AuthResult> {
-  const metadata = await discoverOAuthMetadata(serverUrl);
-=======
-  { serverUrl,
-    authorizationCode,
-    scope,
-  }: {
-    serverUrl: string | URL;
-    authorizationCode?: string;
-    scope?: string;
-  }): Promise<AuthResult> {
-  const metadata = await discoverOAuthMetadata(serverUrl);
->>>>>>> pcarleton/oauth-draft
 
   // Handle client registration if needed
   let clientInformation = await Promise.resolve(provider.clientInformation());
@@ -351,15 +337,11 @@ export async function startAuthorization(
     codeChallengeMethod,
   );
   authorizationUrl.searchParams.set("redirect_uri", String(redirectUrl));
-<<<<<<< HEAD
   authorizationUrl.searchParams.set("resource", String(resource));
-||||||| 7e18c70
-=======
-  
+
   if (scope) {
     authorizationUrl.searchParams.set("scope", scope);
   }
->>>>>>> pcarleton/oauth-draft
 
   return { authorizationUrl, codeVerifier };
 }
