@@ -167,9 +167,34 @@ const getServer = () => {
 
 const MCP_PORT = 3000;
 const AUTH_PORT = 3001;
-
 const app = express();
 app.use(express.json());
+
+// Request/response logging middleware
+const logHandler = (req, res, next) => {
+  const startTime = Date.now();
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+
+  // Log request headers and body
+  console.log('Request Headers:', req.headers);
+  if (req.body && Object.keys(req.body).length > 0) {
+    console.log('Request Body:', JSON.stringify(req.body, null, 2));
+  }
+
+  // Capture the response
+  const originalSend = res.send;
+  res.send = function(body) {
+    const responseTime = Date.now() - startTime;
+    console.log(`[${new Date().toISOString()}] Response ${res.statusCode} - ${responseTime}ms`);
+    // Log response body
+    console.log('Response Body:', body);
+    return originalSend.call(this, body);
+  };
+
+  next();
+}
+
+app.use(logHandler);
 
 // Set up OAuth if enabled
 let authMiddleware = null;
@@ -183,6 +208,7 @@ if (useOAuth) {
   // Create separate auth server app
   const authApp = express();
   authApp.use(express.json());
+  authApp.use(logHandler);
 
   // Add OAuth routes to the auth server
   authApp.use(mcpAuthRouter({
