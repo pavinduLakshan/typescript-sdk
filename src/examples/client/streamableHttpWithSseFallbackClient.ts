@@ -1,6 +1,6 @@
 import { Client } from '../../client/index.js';
-import { StreamableHTTPClientTransport } from '../../client/streamableHttp.js';
-import { SSEClientTransport } from '../../client/sse.js';
+import { StreamableHTTPClientTransport, StreamableHTTPError } from '../../client/streamableHttp.js';
+import { SSEClientTransport, SseError } from '../../client/sse.js';
 import {
   ListToolsRequest,
   ListToolsResultSchema,
@@ -8,14 +8,20 @@ import {
   CallToolResultSchema,
   LoggingMessageNotificationSchema,
 } from '../../types.js';
+import { InMemoryOAuthClientProvider } from './demoInMemoryClientOAuthProvider.js';
+import { auth } from 'src/client/auth.js';
+import * as http from 'node:http';
+import * as nurl from 'node:url';
+import { exec } from 'child_process';
+
 
 /**
  * Simplified Backwards Compatible MCP Client
- * 
+ *
  * This client demonstrates backward compatibility with both:
  * 1. Modern servers using Streamable HTTP transport (protocol version 2025-03-26)
  * 2. Older servers using HTTP+SSE transport (protocol version 2024-11-05)
- * 
+ *
  * Following the MCP specification for backwards compatibility:
  * - Attempts to POST an initialize request to the server URL first (modern transport)
  * - If that fails with 4xx status, falls back to GET request for SSE stream (older transport)
@@ -91,8 +97,66 @@ async function connectWithBackwardsCompatibility(url: string): Promise<{
   const baseUrl = new URL(url);
 
   try {
+    const provider = new InMemoryOAuthClientProvider("http://localhost:8090",
+      {
+        redirect_uris: ["http://localhost:8090/callback"]
+    }, (redirectUrl) => {
+// Start a web server to handle the OAuth callback
+
+      console.log(`Opening browser to: ${redirectUrl.toString()}`);
+
+      // Create a promise that will resolve with the authorization code
+      const codePromise = new Promise<string>((resolve, reject) => {
+        const server = http.createServer((req, res) => {
+          const parsedUrl = nurl.parse(req.url || '', true);
+          const code = parsedUrl.query.code as string;
+
+          if (code) {
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.end(`
+              <html>
+                <body>
+                  <h1>Authorization Successful</h1>
+                  <p>You can close this window now.</p>
+                  <script>window.close();</script>
+                </body>
+              </html>
+            `);
+
+            resolve(code);
+
+            // Close the server after handling the request
+            setTimeout(() => server.close(), 1000);
+          } else {
+            res.writeHead(400, { 'Content-Type': 'text/html' });
+            res.end(`
+              <html>
+                <body>
+                  <h1>Authorization Failed</h1>
+                  <p>No authorization code was provided.</p>
+                </body>
+              </html>
+            `);
+
+            reject(new Error("No authorization code provided"));
+          }
+        });
+
+        server.listen(8090, () => {
+          console.log('OAuth callback server started on http://localhost:8090');
+          // Open the browser to the authorization URL
+          const openCommand = process.platform === 'win32' ? 'start' :
+                            process.platform === 'darwin' ? 'open' : 'xdg-open';
+          exec(`${openCommand} "${redirectUrl.toString()}"`);
+        });
+      });
+
+      // Wait for the authorization code
+      return codePromise;
+    });
     // Create modern transport
-    const streamableTransport = new StreamableHTTPClientTransport(baseUrl);
+    const streamableTransport = new StreamableHTTPClientTransport(baseUrl,
+      {authProvider: provider});
     await client.connect(streamableTransport);
 
     console.log('Successfully connected using modern Streamable HTTP transport.');
@@ -102,6 +166,17 @@ async function connectWithBackwardsCompatibility(url: string): Promise<{
       transportType: 'streamable-http'
     };
   } catch (error) {
+    // console.log(typeof error);
+    // if (error.code === 401) {
+    //   // try Auth instead.
+    //   console.log("Received 401... trying auth");
+    //   const result = await auth(provider, { resourceServerUrl: baseUrl });
+
+    //   console.log(result)
+    // } else {
+    //   console.log("not a 401?")
+    // }
+
     // Step 2: If transport fails, try the older SSE transport
     console.log(`StreamableHttp transport connection failed: ${error}`);
     console.log('2. Falling back to deprecated HTTP+SSE transport...');
