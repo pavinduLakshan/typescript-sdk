@@ -43,7 +43,8 @@ import {
   ErrorCode,
   McpError,
 } from "../types.js";
-import { Ajv, type ValidateFunction } from "ajv";
+import { z } from "zod";
+import { JsonSchema, parseSchema } from "json-schema-to-zod";
 
 export type ClientOptions = ProtocolOptions & {
   /**
@@ -90,8 +91,7 @@ export class Client<
   private _serverVersion?: Implementation;
   private _capabilities: ClientCapabilities;
   private _instructions?: string;
-  private _cachedToolOutputValidators: Map<string, ValidateFunction> = new Map();
-  private _ajv: InstanceType<typeof Ajv>;
+  private _cachedToolOutputSchemas: Map<string, z.ZodTypeAny> = new Map();
 
   /**
    * Initializes this client with the given name and version information.
@@ -102,7 +102,6 @@ export class Client<
   ) {
     super(options);
     this._capabilities = options?.capabilities ?? {};
-    this._ajv = new Ajv({ strict: false, validateFormats: true });
   }
 
   /**
@@ -427,8 +426,8 @@ export class Client<
     );
 
     // Check if the tool has an outputSchema
-    const validator = this.getToolOutputValidator(params.name);
-    if (validator) {
+    const outputSchema = this.getToolOutputSchema(params.name);
+    if (outputSchema) {
       // If tool has outputSchema, it MUST return structuredContent (unless it's an error)
       if (!result.structuredContent && !result.isError) {
         throw new McpError(
@@ -441,12 +440,12 @@ export class Client<
       if (result.structuredContent) {
         try {
           // Validate the structured content (which is already an object) against the schema
-          const isValid = validator(result.structuredContent);
+          const validationResult = outputSchema.safeParse(result.structuredContent);
 
-          if (!isValid) {
+          if (!validationResult.success) {
             throw new McpError(
               ErrorCode.InvalidParams,
-              `Structured content does not match the tool's output schema: ${this._ajv.errorsText(validator.errors)}`
+              `Structured content does not match the tool's output schema: ${validationResult.error.message}`
             );
           }
         } catch (error) {
@@ -459,29 +458,41 @@ export class Client<
           );
         }
       }
+    } else {
+      // If tool doesn't have outputSchema, it MUST NOT return structuredContent
+      if (result.structuredContent) {
+        throw new McpError(
+          ErrorCode.InvalidRequest,
+          `Tool without outputSchema cannot return structuredContent`
+        );
+      }
     }
 
     return result;
   }
 
   private cacheToolOutputSchemas(tools: Tool[]) {
-    this._cachedToolOutputValidators.clear();
+    this._cachedToolOutputSchemas.clear();
 
     for (const tool of tools) {
-      // If the tool has an outputSchema, create and cache the Ajv validator
+      // If the tool has an outputSchema, create and cache the Zod schema
       if (tool.outputSchema) {
         try {
-          const validator = this._ajv.compile(tool.outputSchema);
-          this._cachedToolOutputValidators.set(tool.name, validator);
+          const zodSchemaCode = parseSchema(tool.outputSchema as JsonSchema);
+          // The library returns a string of Zod code, we need to evaluate it
+          // Using Function constructor to safely evaluate the Zod schema
+          const createSchema = new Function('z', `return ${zodSchemaCode}`);
+          const zodSchema = createSchema(z);
+          this._cachedToolOutputSchemas.set(tool.name, zodSchema);
         } catch (error) {
-          console.warn(`Failed to compile output schema for tool ${tool.name}: ${error}`);
+          console.warn(`Failed to create Zod schema for tool ${tool.name}: ${error}`);
         }
       }
     }
   }
 
-  private getToolOutputValidator(toolName: string): ValidateFunction | undefined {
-    return this._cachedToolOutputValidators.get(toolName);
+  private getToolOutputSchema(toolName: string): z.ZodTypeAny | undefined {
+    return this._cachedToolOutputSchemas.get(toolName);
   }
 
   async listTools(
