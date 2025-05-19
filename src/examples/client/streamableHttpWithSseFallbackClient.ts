@@ -141,6 +141,7 @@ async function connectWithBackwardsCompatibility(url: string): Promise<{
             reject(new Error("No authorization code provided"));
           }
         });
+        console.log("about to start server");
 
         server.listen(8090, () => {
           console.log('OAuth callback server started on http://localhost:8090');
