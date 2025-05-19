@@ -97,10 +97,10 @@ async function connectWithBackwardsCompatibility(url: string): Promise<{
   const baseUrl = new URL(url);
 
   try {
-    const provider = new InMemoryOAuthClientProvider("http://localhost:8090",
+    const provider = new InMemoryOAuthClientProvider("http://localhost:8090/callback",
       {
         redirect_uris: ["http://localhost:8090/callback"]
-    }, (redirectUrl) => {
+    }, async (redirectUrl) => {
 // Start a web server to handle the OAuth callback
 
       console.log(`Opening browser to: ${redirectUrl.toString()}`);
@@ -152,6 +152,8 @@ async function connectWithBackwardsCompatibility(url: string): Promise<{
       });
 
       // Wait for the authorization code
+      //
+        await codePromise;
       return codePromise;
     });
     // Create modern transport
