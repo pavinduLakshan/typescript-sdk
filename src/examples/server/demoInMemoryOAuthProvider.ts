@@ -44,6 +44,9 @@ export class DemoInMemoryAuthProvider implements OAuthServerProvider {
     const searchParams = new URLSearchParams({
       code,
     });
+    if (params.state !== undefined) {
+      searchParams.set('state', params.state);
+    }
 
     this.codes.set(code, {
       client,
@@ -102,7 +105,7 @@ export class DemoInMemoryAuthProvider implements OAuthServerProvider {
 
     return {
       access_token: token,
-      token_type: 'Bearer',
+      token_type: 'bearer',
       expires_in: 3600,
       scope: (codeData.params.scopes || []).join(' '),
     };

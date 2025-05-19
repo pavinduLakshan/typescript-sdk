@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { McpServer } from '../../server/mcp.js';
 import { StreamableHTTPServerTransport } from '../../server/streamableHttp.js';
-import { mcpAuthRouter, mcpProtectedResourceRouter, getOAuthProtectedResourceMetadataUrl } from '../../server/auth/router.js';
+import { mcpAuthRouter, getOAuthProtectedResourceMetadataUrl } from '../../server/auth/router.js';
 import { requireBearerAuth } from '../../server/auth/middleware/bearerAuth.js';
 import { CallToolResult, GetPromptResult, isInitializeRequest, ReadResourceResult } from '../../types.js';
 import { InMemoryEventStore } from '../shared/inMemoryEventStore.js';
@@ -188,7 +188,6 @@ if (useOAuth) {
   authApp.use(mcpAuthRouter({
     provider,
     issuerUrl: authServerUrl,
-    baseUrl: authServerUrl,
     scopesSupported: ['mcp:tools'],
     // This endpoint is set up on the Authorization server, but really shouldn't be.
     protectedResourceOptions: {
@@ -202,12 +201,15 @@ if (useOAuth) {
     console.log(`OAuth Authorization Server listening on port ${AUTH_PORT}`);
   });
 
-  // Add protected resource metadata to the main MCP server
-  app.use(mcpProtectedResourceRouter({
+  // Add both resource metadata and oauth server metadata (for backwards compatiblity) to the main MCP server
+  app.use(mcpAuthRouter({
+    provider,
     issuerUrl: authServerUrl,
-    serverUrl: mcpServerUrl,
     scopesSupported: ['mcp:tools'],
-    resourceName: 'MCP Demo Server',
+    protectedResourceOptions: {
+      serverUrl: mcpServerUrl,
+      resourceName: 'MCP Demo Server',
+    },
   }));
 
   authMiddleware = requireBearerAuth({
