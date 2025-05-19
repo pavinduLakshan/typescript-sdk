@@ -532,4 +532,37 @@ describe("StreamableHTTPClientTransport", () => {
     await expect(transport.send(message)).rejects.toThrow(UnauthorizedError);
     expect(mockAuthProvider.redirectToAuthorization.mock.calls).toHaveLength(1);
   });
+
+  it("properly fails fast on 401 when sending initialize message", async () => {
+    const message: JSONRPCMessage = {
+      jsonrpc: "2.0",
+      method: "initialize",
+      params: {
+        clientInfo: { name: "test-client", version: "1.0" },
+        protocolVersion: "2025-03-26"
+      },
+      id: "init-id"
+    };
+
+    // First call returns 401
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        statusText: "Unauthorized",
+        headers: new Headers()
+      });
+
+    // Mock the auth provider to trigger the auth flow
+    mockAuthProvider.tokens.mockResolvedValueOnce(undefined);
+    mockAuthProvider.redirectToAuthorization.mockImplementationOnce(async () => {
+      // This simulates the auth flow being triggered
+    });
+
+    // The send method should properly reject and not hang
+    await expect(transport.send(message)).rejects.toThrow(UnauthorizedError);
+    
+    // Check that auth flow was triggered
+    expect(mockAuthProvider.redirectToAuthorization).toHaveBeenCalled();
+  });
 });

@@ -406,8 +406,8 @@ export class StreamableHTTPClientTransport implements Transport {
             throw new UnauthorizedError();
           }
 
-          // Purposely _not_ awaited, so we don't call onerror twice
-          return this.send(message);
+          // Retry the send operation after successful auth
+          return await this.send(message);
         }
 
         const text = await response.text().catch(() => null);
