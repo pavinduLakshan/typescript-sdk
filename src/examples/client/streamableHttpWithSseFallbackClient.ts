@@ -126,7 +126,7 @@ async function connectWithBackwardsCompatibility(url: string): Promise<{
             resolve(code);
 
             // Close the server after handling the request
-            setTimeout(() => server.close(), 1000);
+            setTimeout(() => server.close(), 3000);
           } else {
             res.writeHead(400, { 'Content-Type': 'text/html' });
             res.end(`
@@ -154,7 +154,6 @@ async function connectWithBackwardsCompatibility(url: string): Promise<{
 
       // Wait for the authorization code
       //
-        await codePromise;
       return codePromise;
     });
     // Create modern transport
