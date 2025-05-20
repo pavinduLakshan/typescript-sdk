@@ -381,7 +381,6 @@ describe("OAuth Authorization", () => {
 
       await expect(
         startAuthorization("https://auth.example.com", {
-          resource: "https://resource.example.com",
           metadata,
           clientInformation: validClientInfo,
           redirectUrl: "http://localhost:3000/callback",
