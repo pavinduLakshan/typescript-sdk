@@ -946,6 +946,11 @@ export const CallToolResultSchema = z.union([
   CallToolStructuredResultSchema,
 ]);
 
+export const CallToolResultWithContentSchema = z.intersection(
+  CallToolResultSchema,
+  z.object({ content: ContentListSchema })
+)
+
 /**
  * CallToolResultSchema extended with backwards compatibility to protocol version 2024-10-07.
  */
@@ -1400,6 +1405,7 @@ export type ContentList = Infer<typeof ContentListSchema>;
 export type CallToolUnstructuredResult = Infer<typeof CallToolUnstructuredResultSchema>;
 export type CallToolStructuredResult = Infer<typeof CallToolStructuredResultSchema>;
 export type CallToolResult = Infer<typeof CallToolResultSchema>;
+export type CallToolResultWithContent = Infer<typeof CallToolResultWithContentSchema>;
 export type CompatibilityCallToolResult = Infer<typeof CompatibilityCallToolResultSchema>;
 export type CallToolRequest = Infer<typeof CallToolRequestSchema>;
 export type ToolListChangedNotification = Infer<typeof ToolListChangedNotificationSchema>;

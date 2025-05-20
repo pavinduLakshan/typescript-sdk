@@ -42,6 +42,7 @@ import {
   Tool,
   ErrorCode,
   McpError,
+  CallToolResultWithContent,
 } from "../types.js";
 import Ajv from "ajv";
 import type { ValidateFunction } from "ajv";
@@ -420,7 +421,7 @@ export class Client<
       | typeof CallToolResultSchema
       | typeof CompatibilityCallToolResultSchema = CallToolResultSchema,
     options?: RequestOptions,
-  ) {
+  ): Promise<CallToolResultWithContent> {
     const result = await this.request(
       { method: "tools/call", params },
       resultSchema,
@@ -459,10 +460,19 @@ export class Client<
             `Failed to validate structured content: ${error instanceof Error ? error.message : String(error)}`
           );
         }
+        // for compatibility, serialize structuredContent to content if none was provided
+        if (!result.content) {
+          result.content = [
+            {
+              type: "text",
+              text: JSON.stringify(result.structuredContent, null, 2),
+            },
+          ];
+        }
       }
     }
 
-    return result;
+    return result as CallToolResultWithContent;
   }
 
   private cacheToolOutputSchemas(tools: Tool[]) {

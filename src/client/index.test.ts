@@ -1261,5 +1261,79 @@ describe('outputSchema validation', () => {
     );
   });
 
+  /***
+   * Test: client should automatically provide compatible content field
+   */
+  test('should automatically provide compatible content field', async () => {
+    const server = new Server({
+      name: 'test-server',
+      version: '1.0.0',
+    }, {
+      capabilities: {
+        tools: {},
+      },
+    });
+
+    // Set up server handlers
+    server.setRequestHandler(InitializeRequestSchema, async (request) => ({
+      protocolVersion: request.params.protocolVersion,
+      capabilities: {},
+      serverInfo: {
+        name: 'test-server',
+        version: '1.0.0',
+      }
+    }));
+
+    server.setRequestHandler(ListToolsRequestSchema, async () => ({
+      tools: [
+        {
+          name: 'test-tool',
+          description: 'A test tool',
+          inputSchema: {
+            type: 'object',
+            properties: {},
+          },
+          outputSchema: {
+            type: 'object',
+            properties: {
+              result: { type: 'string' },
+              count: { type: 'number' },
+            },
+            required: ['result', 'count'],
+            additionalProperties: false,
+          },
+        },
+      ],
+    }));
+
+    server.setRequestHandler(CallToolRequestSchema, async (request) => {
+      if (request.params.name === 'test-tool') {
+        return {
+          structuredContent: { result: 'success', count: 42 }
+        };
+      }
+      throw new Error('Unknown tool');
+    });
+
+    const client = new Client({
+      name: 'test-client',
+      version: '1.0.0',
+    });
+
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+
+    await Promise.all([
+      client.connect(clientTransport),
+      server.connect(serverTransport),
+    ]);
+
+    // List tools to cache the schemas
+    await client.listTools();
+
+    // Call the tool - client should automatically provide compatible content field
+    const result = await client.callTool({ name: 'test-tool' });
+    expect(result.structuredContent).toEqual({ result: 'success', count: 42 });
+    expect(result.content).toEqual([{ type: 'text', text: JSON.stringify(result.structuredContent, null, 2) }]);
+  });
 
 });
