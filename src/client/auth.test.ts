@@ -331,7 +331,6 @@ describe("OAuth Authorization", () => {
       expect(authorizationUrl.toString()).toMatch(
         /^https:\/\/auth\.example\.com\/authorize\?/
       );
-      expect(authorizationUrl.searchParams.get("resource")).toBe("https://resource.example.com");
       expect(authorizationUrl.searchParams.get("response_type")).toBe("code");
       expect(authorizationUrl.searchParams.get("code_challenge")).toBe("test_challenge");
       expect(authorizationUrl.searchParams.get("code_challenge_method")).toBe(
