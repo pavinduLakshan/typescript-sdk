@@ -284,7 +284,6 @@ export async function discoverOAuthMetadata(
 export async function startAuthorization(
   authorizationServerUrl: string | URL,
   {
-    resource,
     metadata,
     clientInformation,
     redirectUrl,
