@@ -346,7 +346,6 @@ describe("OAuth Authorization", () => {
       const { authorizationUrl } = await startAuthorization(
         "https://auth.example.com",
         {
-          resource: "https://resource.example.com",
           metadata: validMetadata,
           clientInformation: validClientInfo,
           redirectUrl: "http://localhost:3000/callback",
