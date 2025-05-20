@@ -151,7 +151,6 @@ export async function auth(
 
   // Start new authorization flow
   const { authorizationUrl, codeVerifier } = await startAuthorization(authorizationServerUrl, {
-    resource: resourceMetadata.resource,
     metadata,
     clientInformation,
     redirectUrl: provider.redirectUrl
