@@ -331,7 +331,6 @@ export async function startAuthorization(
     codeChallengeMethod,
   );
   authorizationUrl.searchParams.set("redirect_uri", String(redirectUrl));
-  authorizationUrl.searchParams.set("resource", String(resource));
 
   return { authorizationUrl, codeVerifier };
 }
