@@ -89,7 +89,7 @@ export async function auth(
   let resourceMetadata = protectedResourceMetadata ?? await discoverOAuthProtectedResourceMetadata(resourceServerUrl);
 
   if (resourceMetadata.authorization_servers === undefined || resourceMetadata.authorization_servers.length === 0) {
-    throw new Error("Server does not speicify any authorization servers.");
+    throw new Error("Server does not specify any authorization servers.");
   }
   const authorizationServerUrl = resourceMetadata.authorization_servers[0];
 
