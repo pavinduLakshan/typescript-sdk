@@ -557,7 +557,6 @@ describe("SSEClientTransport", () => {
         }
 
         if (req.url === "/token" && req.method === "POST") {
-          console.log("token here")
           // Handle token refresh request
           let body = "";
           req.on("data", chunk => { body += chunk; });
