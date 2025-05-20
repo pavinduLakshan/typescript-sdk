@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * RFC 8414 OAuth 2.0 Authorization Server Metadata
+ * RFC 9728 OAuth Protected Resource Metadata
  */
 export const OAuthProtectedResourceMetadataSchema = z
   .object({
