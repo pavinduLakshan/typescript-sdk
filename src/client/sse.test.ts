@@ -471,8 +471,8 @@ describe("SSEClientTransport", () => {
             break;
 
           case "POST":
-            res.writeHead(401);
-            res.end();
+          res.writeHead(401);
+          res.end();
             break;
         }
       });
@@ -612,11 +612,11 @@ describe("SSEClientTransport", () => {
           return;
         }
 
-        const auth = req.headers.authorization;
-        if (auth === "Bearer expired-token") {
-          res.writeHead(401).end();
-          return;
-        }
+          const auth = req.headers.authorization;
+          if (auth === "Bearer expired-token") {
+            res.writeHead(401).end();
+            return;
+          }
 
         if (auth === "Bearer new-token") {
           res.writeHead(200, {
@@ -630,7 +630,7 @@ describe("SSEClientTransport", () => {
           return;
         }
 
-        res.writeHead(401).end();
+          res.writeHead(401).end();
       });
 
       await new Promise<void>(resolve => {
@@ -754,19 +754,19 @@ describe("SSEClientTransport", () => {
               return;
             }
 
-            const auth = req.headers.authorization;
-            if (auth === "Bearer expired-token") {
-              res.writeHead(401).end();
-              return;
-            }
-
-            if (auth === "Bearer new-token") {
-              res.writeHead(200).end();
-              postAttempts++;
-              return;
-            }
-
+          const auth = req.headers.authorization;
+          if (auth === "Bearer expired-token") {
             res.writeHead(401).end();
+            return;
+          }
+
+          if (auth === "Bearer new-token") {
+            res.writeHead(200).end();
+            postAttempts++;
+            return;
+          }
+
+          res.writeHead(401).end();
             break;
           }
         }

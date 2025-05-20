@@ -84,7 +84,14 @@ export class UnauthorizedError extends Error {
  */
 export async function auth(
   provider: OAuthClientProvider,
-  { resourceServerUrl, authorizationCode, protectedResourceMetadata }: { resourceServerUrl: string | URL, authorizationCode?: string, protectedResourceMetadata?: OAuthProtectedResourceMetadata }): Promise<AuthResult> {
+  { resourceServerUrl,
+    authorizationCode,
+    scope,
+  protectedResourceMetadata }: {
+    resourceServerUrl: string | URL;
+    authorizationCode?: string;
+    scope?: string;
+    protectedResourceMetadata?: OAuthProtectedResourceMetadata }): Promise<AuthResult> {
 
   let resourceMetadata = protectedResourceMetadata ?? await discoverOAuthProtectedResourceMetadata(resourceServerUrl);
 
@@ -153,7 +160,8 @@ export async function auth(
   const { authorizationUrl, codeVerifier } = await startAuthorization(authorizationServerUrl, {
     metadata,
     clientInformation,
-    redirectUrl: provider.redirectUrl
+    redirectUrl: provider.redirectUrl,
+    scope: scope || provider.clientMetadata.scope,
   });
 
   await provider.saveCodeVerifier(codeVerifier);
@@ -286,10 +294,12 @@ export async function startAuthorization(
     metadata,
     clientInformation,
     redirectUrl,
+    scope,
   }: {
     metadata?: OAuthMetadata;
     clientInformation: OAuthClientInformation;
     redirectUrl: string | URL;
+    scope?: string;
   },
 ): Promise<{ authorizationUrl: URL; codeVerifier: string }> {
   const responseType = "code";
@@ -330,6 +340,10 @@ export async function startAuthorization(
     codeChallengeMethod,
   );
   authorizationUrl.searchParams.set("redirect_uri", String(redirectUrl));
+
+  if (scope) {
+    authorizationUrl.searchParams.set("scope", scope);
+  }
 
   return { authorizationUrl, codeVerifier };
 }
