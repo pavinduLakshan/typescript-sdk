@@ -40,11 +40,35 @@ import {
   ServerRequest,
   ServerNotification,
   ToolAnnotations,
+  ResultSchema,
+  ContentListSchema,
+  CallToolUnstructuredResultSchema,
+  Infer,
 } from "../types.js";
 import { Completable, CompletableDef } from "./completable.js";
 import { UriTemplate, Variables } from "../shared/uriTemplate.js";
 import { RequestHandlerExtra } from "../shared/protocol.js";
 import { Transport } from "../shared/transport.js";
+
+/**
+ * In SDK versions 1.12 and forward, the `content` array will be optional for structured
+ * tool call results. For convenience we use this type for defining tool callbacks on the 
+ * server side, but provide a backward-compatible schema for the client in 1.11.
+ */
+const CallToolStructuredResultSchema_forward = ResultSchema.extend({
+  structuredContent: z.object({}).passthrough(),
+  content: z.optional(ContentListSchema),
+  isError: z.optional(z.boolean()),
+});
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const CallToolResultSchema_forward = z.union([
+  CallToolUnstructuredResultSchema,
+  CallToolStructuredResultSchema_forward,
+]);
+
+type CallToolResult_forward = Infer<typeof CallToolResultSchema_forward>;
+
 
 /**
  * High-level MCP server that provides a simpler API for working with resources, tools, and prompts.
@@ -153,7 +177,7 @@ export class McpServer {
           );
         }
 
-        let result: CallToolResult;
+        let result: CallToolResult_forward;
 
         if (tool.inputSchema) {
           const parseResult = await tool.inputSchema.safeParseAsync(
@@ -236,7 +260,7 @@ export class McpServer {
           }
         }
 
-        return result;
+        return result as CallToolResult;
       },
     );
 
@@ -1009,8 +1033,8 @@ export type ToolCallback<Args extends undefined | ZodRawShape = undefined> =
   ? (
     args: z.objectOutputType<Args, ZodTypeAny>,
     extra: RequestHandlerExtra<ServerRequest, ServerNotification>,
-  ) => CallToolResult | Promise<CallToolResult>
-  : (extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => CallToolResult | Promise<CallToolResult>;
+  ) => CallToolResult_forward | Promise<CallToolResult_forward>
+  : (extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => CallToolResult_forward | Promise<CallToolResult_forward>;
 
 export type RegisteredTool = {
   description?: string;

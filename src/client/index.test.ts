@@ -843,6 +843,7 @@ describe('outputSchema validation', () => {
       if (request.params.name === 'test-tool') {
         return {
           structuredContent: { result: 'success', count: 42 },
+          content: [],  // compatibility: remove in 1.12+
         };
       }
       throw new Error('Unknown tool');
@@ -918,6 +919,7 @@ describe('outputSchema validation', () => {
         // Return invalid structured content (count is string instead of number)
         return {
           structuredContent: { result: 'success', count: 'not a number' },
+          content: [],  // compatibility: remove in 1.12+
         };
       }
       throw new Error('Unknown tool');
@@ -1155,6 +1157,7 @@ describe('outputSchema validation', () => {
               created: '2023-01-01T00:00:00Z',
             },
           },
+          content: [],  // compatibility: remove in 1.12+
         };
       }
       throw new Error('Unknown tool');
@@ -1235,6 +1238,7 @@ describe('outputSchema validation', () => {
             name: 'John',
             extraField: 'not allowed',
           },
+          content: [],  // compatibility: remove in 1.12+
         };
       }
       throw new Error('Unknown tool');
