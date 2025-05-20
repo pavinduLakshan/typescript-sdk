@@ -454,7 +454,6 @@ export async function refreshAuthorization(
     },
     body: params,
   });
-console.log(response)
   if (!response.ok) {
     throw new Error(`Token refresh failed: HTTP ${response.status}`);
   }
