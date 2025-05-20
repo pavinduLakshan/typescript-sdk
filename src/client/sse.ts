@@ -2,7 +2,7 @@ import { EventSource, type ErrorEvent, type EventSourceInit } from "eventsource"
 import { Transport } from "../shared/transport.js";
 import { JSONRPCMessage, JSONRPCMessageSchema } from "../types.js";
 import { auth, AuthResult, discoverOAuthProtectedResourceMetadata, extractResourceMetadataUrl, OAuthClientProvider, UnauthorizedError } from "./auth.js";
-import { OAuthProtectedResourceMetadata } from "src/shared/auth.js";
+import { OAuthProtectedResourceMetadata } from "../shared/auth.js";
 
 export class SseError extends Error {
   constructor(
