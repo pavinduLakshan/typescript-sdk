@@ -18,6 +18,7 @@ import {
 import { ResourceTemplate } from "./mcp.js";
 import { completable } from "./completable.js";
 import { UriTemplate } from "../shared/uriTemplate.js";
+import { createCallToolStructuredResult } from "./mcp.js";
 
 describe("McpServer", () => {
   /***
@@ -1082,12 +1083,10 @@ describe("tool()", () => {
             timestamp: z.string()
         },
       },
-      async ({ input }) => ({
-        structuredContent: {
+      async ({ input }) => createCallToolStructuredResult({
           processedInput: input,
           resultType: "structured",
           timestamp: "2023-01-01T00:00:00Z"
-        },
       })
     );
 
@@ -1185,13 +1184,11 @@ describe("tool()", () => {
           timestamp: z.string()
         },
       },
-      async ({ input }) => ({
-        structuredContent: {
+      async ({ input }) => createCallToolStructuredResult({
           processedInput: input,
           resultType: "structured",
           // Missing required 'timestamp' field
           someExtraField: "unexpected" // Extra field not in schema
-        },
       })
     );
 

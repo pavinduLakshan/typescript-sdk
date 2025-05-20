@@ -1161,3 +1161,37 @@ const EMPTY_COMPLETION_RESULT: CompleteResult = {
     hasMore: false,
   },
 };
+
+/**
+ * The spec encourages structured tools to return a `content` field
+ * containing a stringified version of the structured content for backward
+ * compatibility.
+ * 
+ * Use this function to create a CallToolStructuredResult with a content 
+ * field from your structured content, like so:
+ * 
+ * async ({ input }) => createCallToolStructuredResult({
+ *    firstProp: "first",
+ *    secondProp: 2,
+ *    // ...
+ * })
+ * 
+ * Note: in SDK versions 1.11.*, the content field is required for all tool
+ * call results, in the interest of backward compatibility. Later versions 
+ * of the SDK will allow tools to omit the content field if they return
+ * structured content. 
+ */
+export function createCallToolStructuredResult(
+  structuredContent: CallToolResult["structuredContent"]
+): CallToolResult {
+  return {
+    structuredContent,
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify(structuredContent, null, 2),
+      },
+    ],
+  };
+}
+

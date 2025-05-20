@@ -20,6 +20,7 @@ import {
 import { Transport } from "../shared/transport.js";
 import { Server } from "../server/index.js";
 import { InMemoryTransport } from "../inMemory.js";
+import { createCallToolStructuredResult } from "../server/mcp.js";
 
 /***
  * Test: Initialize with Matching Protocol Version
@@ -841,9 +842,7 @@ describe('outputSchema validation', () => {
 
     server.setRequestHandler(CallToolRequestSchema, async (request) => {
       if (request.params.name === 'test-tool') {
-        return {
-          structuredContent: { result: 'success', count: 42 },
-        };
+        return createCallToolStructuredResult({ result: 'success', count: 42 });
       }
       throw new Error('Unknown tool');
     });
@@ -916,9 +915,7 @@ describe('outputSchema validation', () => {
     server.setRequestHandler(CallToolRequestSchema, async (request) => {
       if (request.params.name === 'test-tool') {
         // Return invalid structured content (count is string instead of number)
-        return {
-          structuredContent: { result: 'success', count: 'not a number' },
-        };
+        return createCallToolStructuredResult({ result: 'success', count: 'not a number' });
       }
       throw new Error('Unknown tool');
     });
@@ -1145,17 +1142,15 @@ describe('outputSchema validation', () => {
 
     server.setRequestHandler(CallToolRequestSchema, async (request) => {
       if (request.params.name === 'complex-tool') {
-        return {
-          structuredContent: {
-            name: 'John Doe',
-            age: 30,
-            active: true,
-            tags: ['user', 'admin'],
-            metadata: {
-              created: '2023-01-01T00:00:00Z',
-            },
+        return createCallToolStructuredResult({
+          name: 'John Doe',
+          age: 30,
+          active: true,
+          tags: ['user', 'admin'],
+          metadata: {
+            created: '2023-01-01T00:00:00Z',
           },
-        };
+        });
       }
       throw new Error('Unknown tool');
     });
@@ -1230,12 +1225,10 @@ describe('outputSchema validation', () => {
     server.setRequestHandler(CallToolRequestSchema, async (request) => {
       if (request.params.name === 'strict-tool') {
         // Return structured content with extra property
-        return {
-          structuredContent: {
+        return createCallToolStructuredResult({
             name: 'John',
             extraField: 'not allowed',
-          },
-        };
+        });
       }
       throw new Error('Unknown tool');
     });
