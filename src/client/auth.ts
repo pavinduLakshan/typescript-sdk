@@ -288,7 +288,6 @@ export async function startAuthorization(
     clientInformation,
     redirectUrl,
   }: {
-    resource: string | URL;
     metadata?: OAuthMetadata;
     clientInformation: OAuthClientInformation;
     redirectUrl: string | URL;
