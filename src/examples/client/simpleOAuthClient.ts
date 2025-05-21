@@ -4,7 +4,6 @@ import { createServer } from 'node:http';
 import { createInterface } from 'node:readline';
 import { URL } from 'node:url';
 import { exec } from 'node:child_process';
-import { parse as parseUrl } from 'node:url';
 import { Client } from '../../client/index.js';
 import { StreamableHTTPClientTransport } from '../../client/streamableHttp.js';
 import { OAuthClientInformation, OAuthClientInformationFull, OAuthClientMetadata, OAuthTokens } from '../../shared/auth.js';
@@ -14,13 +13,17 @@ import {
   CallToolResultSchema,
   ListToolsResultSchema
 } from '../../types.js';
-import { OAuthClientProvider, UnauthorizedError } from 'src/client/auth.js';
+import { OAuthClientProvider, UnauthorizedError } from '../../client/auth.js';
 
 // Configuration
 const DEFAULT_SERVER_URL = 'http://localhost:3000/mcp';
 const CALLBACK_PORT = 8090; // Use different port than auth server (3001)
 const CALLBACK_URL = `http://localhost:${CALLBACK_PORT}/callback`;
 
+/**
+ * In-memory OAuth client provider for demonstration purposes
+ * In production, you should persist tokens securely
+ */
 class InMemoryOAuthClientProvider implements OAuthClientProvider {
   private _clientInformation?: OAuthClientInformationFull;
   private _tokens?: OAuthTokens;
@@ -72,13 +75,14 @@ class InMemoryOAuthClientProvider implements OAuthClientProvider {
 
   codeVerifier(): string {
     if (!this._codeVerifier) {
-      throw new Error("No code verifier saved");
+      throw new Error('No code verifier saved');
     }
     return this._codeVerifier;
   }
 }
 /**
- * Interactive MCP client with OAuth authentication using the correct pattern
+ * Interactive MCP client with OAuth authentication
+ * Demonstrates the complete OAuth flow with browser-based authorization
  */
 class InteractiveOAuthClient {
   private client: Client | null = null;
@@ -89,12 +93,18 @@ class InteractiveOAuthClient {
 
   constructor(private serverUrl: string) { }
 
+  /**
+   * Prompts user for input via readline
+   */
   private async question(query: string): Promise<string> {
     return new Promise((resolve) => {
       this.rl.question(query, resolve);
     });
   }
 
+  /**
+   * Opens the authorization URL in the user's default browser
+   */
   private async openBrowser(url: string): Promise<void> {
     console.log(`🌐 Opening browser for authorization: ${url}`);
 
@@ -117,9 +127,13 @@ class InteractiveOAuthClient {
       }
     });
   }
-  // this is just an example of how to use the OAuth flow
-  // in a real application you would probably want to use a more robust
-  // method of handling the callback and storing the tokens
+  /**
+   * Example OAuth callback handler - in production, use a more robust approach
+   * for handling callbacks and storing tokens
+   */
+  /**
+   * Starts a temporary HTTP server to receive the OAuth callback
+   */
   private async waitForOAuthCallback(): Promise<string> {
     return new Promise<string>((resolve, reject) => {
       const server = createServer((req, res) => {
@@ -130,13 +144,13 @@ class InteractiveOAuthClient {
           return;
         }
 
-        console.log(`📥 Callback server received request: ${req.url}`);
-        const parsedUrl = parseUrl(req.url || '', true);
-        const code = parsedUrl.query.code as string;
-        const error = parsedUrl.query.error as string;
+        console.log(`📥 Received callback: ${req.url}`);
+        const parsedUrl = new URL(req.url || '', 'http://localhost');
+        const code = parsedUrl.searchParams.get('code');
+        const error = parsedUrl.searchParams.get('error');
 
         if (code) {
-          console.log(`✅ Authorization code received: ${code.substring(0, 10)}...`);
+          console.log(`✅ Authorization code received: ${code?.substring(0, 10)}...`);
           res.writeHead(200, { 'Content-Type': 'text/html' });
           res.end(`
             <html>
@@ -188,11 +202,10 @@ class InteractiveOAuthClient {
       console.log('🔌 Attempting connection (this will trigger OAuth redirect)...');
       await this.client!.connect(transport);
       console.log('✅ Connected successfully');
-    } catch (error: any) {
+    } catch (error) {
       if (error instanceof UnauthorizedError) {
         console.log('🔐 OAuth required - waiting for authorization...');
         const callbackPromise = this.waitForOAuthCallback();
-        // Wait for the authorization code from the callback
         const authCode = await callbackPromise;
         await transport.finishAuth(authCode);
         console.log('🔐 Authorization code received:', authCode);
@@ -205,6 +218,9 @@ class InteractiveOAuthClient {
     }
   }
 
+  /**
+   * Establishes connection to the MCP server with OAuth authentication
+   */
   async connect(): Promise<void> {
     console.log(`🔗 Attempting to connect to ${this.serverUrl}...`);
 
@@ -244,6 +260,9 @@ class InteractiveOAuthClient {
     await this.interactiveLoop();
   }
 
+  /**
+   * Main interactive loop for user commands
+   */
   async interactiveLoop(): Promise<void> {
     console.log('\n🎯 Interactive MCP Client with OAuth');
     console.log('Commands:');
@@ -267,7 +286,7 @@ class InteractiveOAuthClient {
         } else if (command.startsWith('call ')) {
           await this.handleCallTool(command);
         } else {
-          console.log("❌ Unknown command. Try 'list', 'call <tool_name>', or 'quit'");
+          console.log('❌ Unknown command. Try \'list\', \'call <tool_name>\', or \'quit\'');
         }
       } catch (error) {
         if (error instanceof Error && error.message === 'SIGINT') {
@@ -320,7 +339,7 @@ class InteractiveOAuthClient {
     }
 
     // Parse arguments (simple JSON-like format)
-    let toolArgs: Record<string, any> = {};
+    let toolArgs: Record<string, unknown> = {};
     if (parts.length > 2) {
       const argsString = parts.slice(2).join(' ');
       try {
@@ -334,7 +353,7 @@ class InteractiveOAuthClient {
     await this.callTool(toolName, toolArgs);
   }
 
-  private async callTool(toolName: string, toolArgs: Record<string, any>): Promise<void> {
+  private async callTool(toolName: string, toolArgs: Record<string, unknown>): Promise<void> {
     if (!this.client) {
       console.log('❌ Not connected to server');
       return;
