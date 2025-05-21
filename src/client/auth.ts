@@ -84,15 +84,27 @@ export class UnauthorizedError extends Error {
  */
 export async function auth(
   provider: OAuthClientProvider,
-  { resourceServerUrl, authorizationCode, protectedResourceMetadata, scope }: { resourceServerUrl: string | URL, authorizationCode?: string, protectedResourceMetadata?: OAuthProtectedResourceMetadata, scope?: string;
- }): Promise<AuthResult> {
+  { resourceServerUrl,
+    authorizationCode,
+    scope,
+    resourceMetadataUrl
+  }: {
+    resourceServerUrl: string | URL;
+    authorizationCode?: string;
+    scope?: string;
+    resourceMetadataUrl?: URL }): Promise<AuthResult> {
 
-  const resourceMetadata = protectedResourceMetadata ?? await discoverOAuthProtectedResourceMetadata(resourceServerUrl);
+  let authorizationServerUrl = resourceServerUrl;
+  try {
+    const resourceMetadata = await discoverOAuthProtectedResourceMetadata(
+      resourceMetadataUrl || resourceServerUrl);
 
-  if (resourceMetadata.authorization_servers === undefined || resourceMetadata.authorization_servers.length === 0) {
-    throw new Error("Server does not speicify any authorization servers.");
+    if (resourceMetadata.authorization_servers && resourceMetadata.authorization_servers.length > 0) {
+      authorizationServerUrl = resourceMetadata.authorization_servers[0];
+    }
+  } catch (error) {
+    console.warn("Could not load OAuth Protected Resource metadata, falling back to /.well-known/oauth-authorization-server", error)
   }
-  const authorizationServerUrl = resourceMetadata.authorization_servers[0];
 
   const metadata = await discoverOAuthMetadata(authorizationServerUrl);
 
@@ -152,7 +164,6 @@ export async function auth(
 
   // Start new authorization flow
   const { authorizationUrl, codeVerifier } = await startAuthorization(authorizationServerUrl, {
-    resource: resourceMetadata.resource,
     metadata,
     clientInformation,
     redirectUrl: provider.redirectUrl,
@@ -286,13 +297,11 @@ export async function discoverOAuthMetadata(
 export async function startAuthorization(
   authorizationServerUrl: string | URL,
   {
-    resource,
     metadata,
     clientInformation,
     redirectUrl,
     scope,
   }: {
-    resource: string | URL;
     metadata?: OAuthMetadata;
     clientInformation: OAuthClientInformation;
     redirectUrl: string | URL;
@@ -337,7 +346,6 @@ export async function startAuthorization(
     codeChallengeMethod,
   );
   authorizationUrl.searchParams.set("redirect_uri", String(redirectUrl));
-  authorizationUrl.searchParams.set("resource", String(resource));
 
   if (scope) {
     authorizationUrl.searchParams.set("scope", scope);
@@ -462,7 +470,6 @@ export async function refreshAuthorization(
     },
     body: params,
   });
-console.log(response)
   if (!response.ok) {
     throw new Error(`Token refresh failed: HTTP ${response.status}`);
   }

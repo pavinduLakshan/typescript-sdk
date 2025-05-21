@@ -154,6 +154,7 @@ describe("SSEClientTransport", () => {
       expect(lastServerRequest.url).toBe("/custom/path/messages");
     });
 
+
     it("establishes SSE connection and receives endpoint", async () => {
       transport = new SSEClientTransport(resourceBaseUrl);
       await transport.start();
@@ -525,6 +526,7 @@ describe("SSEClientTransport", () => {
               res.writeHead(404).end();
               return;
             }
+
             res.writeHead(200, {
               "Content-Type": "text/event-stream",
               "Cache-Control": "no-cache, no-transform",
@@ -621,7 +623,6 @@ describe("SSEClientTransport", () => {
         }
 
         if (req.url === "/token" && req.method === "POST") {
-          console.log("token here")
           // Handle token refresh request
           let body = "";
           req.on("data", chunk => { body += chunk; });
@@ -696,7 +697,6 @@ describe("SSEClientTransport", () => {
         }
 
         res.writeHead(401).end();
-        return;
       });
 
       await new Promise<void>(resolve => {
@@ -733,9 +733,6 @@ describe("SSEClientTransport", () => {
       mockAuthProvider.saveTokens.mockImplementation((tokens) => {
         currentTokens = tokens;
       });
-
-      // Create server that accepts SSE but returns 401 on POST with expired token
-      resourceServer.close();
 
       // Create server that returns 401 for expired token, then accepts new token
       resourceServer.close();
