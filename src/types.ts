@@ -843,13 +843,13 @@ export const ToolSchema = z
      * If not set, a CallToolResult for this Tool MUST NOT contain a structuredContent field and MUST contain a content field.
      */
     outputSchema: z.optional(
-        z.object({
-          type: z.literal("object"),
-          properties: z.optional(z.object({}).passthrough()),
-          required: z.optional(z.array(z.string())),
-        })
+      z.object({
+        type: z.literal("object"),
+        properties: z.optional(z.object({}).passthrough()),
+        required: z.optional(z.array(z.string())),
+      })
         .passthrough()
-      ),
+    ),
     /**
      * Optional additional tool information.
      */
@@ -941,15 +941,16 @@ export const CallToolStructuredResultSchema = ResultSchema.extend({
   isError: z.optional(z.boolean()),
 });
 
-export const CallToolResultSchema = z.union([
-  CallToolUnstructuredResultSchema,
-  CallToolStructuredResultSchema,
-]);
-
-export const CallToolResultWithContentSchema = z.intersection(
-  CallToolResultSchema,
+export const CallToolResultSchema = z.intersection(
+  z.union([
+    CallToolUnstructuredResultSchema,
+    CallToolStructuredResultSchema,
+  ]),
+  // For backwards compatibility with older protocol versions
+  // we always return the content field, even if the tool defines an outputSchema.
   z.object({ content: ContentListSchema })
-)
+);
+
 
 /**
  * CallToolResultSchema extended with backwards compatibility to protocol version 2024-10-07.
@@ -1405,7 +1406,6 @@ export type ContentList = Infer<typeof ContentListSchema>;
 export type CallToolUnstructuredResult = Infer<typeof CallToolUnstructuredResultSchema>;
 export type CallToolStructuredResult = Infer<typeof CallToolStructuredResultSchema>;
 export type CallToolResult = Infer<typeof CallToolResultSchema>;
-export type CallToolResultWithContent = Infer<typeof CallToolResultWithContentSchema>;
 export type CompatibilityCallToolResult = Infer<typeof CompatibilityCallToolResultSchema>;
 export type CallToolRequest = Infer<typeof CallToolRequestSchema>;
 export type ToolListChangedNotification = Infer<typeof ToolListChangedNotificationSchema>;

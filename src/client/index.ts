@@ -42,7 +42,6 @@ import {
   Tool,
   ErrorCode,
   McpError,
-  CallToolResultWithContent,
 } from "../types.js";
 import Ajv from "ajv";
 import type { ValidateFunction } from "ajv";
@@ -421,7 +420,7 @@ export class Client<
       | typeof CallToolResultSchema
       | typeof CompatibilityCallToolResultSchema = CallToolResultSchema,
     options?: RequestOptions,
-  ): Promise<CallToolResultWithContent> {
+  ) {
     const result = await this.request(
       { method: "tools/call", params },
       resultSchema,
@@ -472,7 +471,7 @@ export class Client<
       }
     }
 
-    return result as CallToolResultWithContent;
+    return result;
   }
 
   private cacheToolOutputSchemas(tools: Tool[]) {

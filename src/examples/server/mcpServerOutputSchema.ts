@@ -20,7 +20,7 @@ server.registerTool(
   "get_weather",
   {
     description: "Get weather information for a city",
-    inputSchema:{
+    inputSchema: {
       city: z.string().describe("City name"),
       country: z.string().describe("Country code (e.g., US, UK)")
     },
@@ -49,7 +49,7 @@ server.registerTool(
       structuredContent: {
         temperature: {
           celsius: temp_c,
-          fahrenheit: Math.round((temp_c * 9/5 + 32) * 10) / 10
+          fahrenheit: Math.round((temp_c * 9 / 5 + 32) * 10) / 10
         },
         conditions,
         humidity: Math.round(Math.random() * 100),
@@ -57,7 +57,16 @@ server.registerTool(
           speed_kmh: Math.round(Math.random() * 50),
           direction: ["N", "NE", "E", "SE", "S", "SW", "W", "NW"][Math.floor(Math.random() * 8)]
         }
-      }
+      },
+      // Only for backwards compatibility
+      // we want to make sure that older clients can still use the tool
+      // even if they don't support structured content
+      content: [
+        {
+          type: "text",
+          text: `Weather in ${city}, ${country}: ${temp_c}°C (${Math.round((temp_c * 9 / 5 + 32) * 10) / 10}°F), ${conditions}`
+        }
+      ]
     };
   }
 );
