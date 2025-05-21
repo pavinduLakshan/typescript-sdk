@@ -758,10 +758,10 @@ describe("OAuth Authorization", () => {
         "https://resource.example.com/.well-known/oauth-protected-resource"
       );
 
-      // Since protected resource metadata failed, it should fallback to discovering
-      // the auth server metadata from the default location (but the auth function
-      // expects authorization_servers from the resource metadata, so this test
-      // needs to be updated to handle that case properly)
+      // Second call should be to oauth metadata
+      expect(mockFetch.mock.calls[1][0].toString()).toBe(
+        "https://resource.example.com/.well-known/oauth-authorization-server"
+      );
     });
   });
 });
