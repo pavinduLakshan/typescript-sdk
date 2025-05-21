@@ -939,17 +939,28 @@ export const CallToolStructuredResultSchema = ResultSchema.extend({
    * If not set, this is assumed to be false (the call was successful).
    */
   isError: z.optional(z.boolean()),
-});
+}).transform((result) => {
+  // Auto-generate content field if missing
+  if (!result.content) {
+    return {
+      ...result,
+      content: [{
+        type: "text" as const,
+        text: JSON.stringify(result.structuredContent, null, 2)
+      }]
+    };
+  }
+  return result;
+}).pipe(ResultSchema.extend({
+  structuredContent: z.object({}).passthrough(),
+  content: ContentListSchema, // Now required in output type
+  isError: z.optional(z.boolean()),
+}));
 
-export const CallToolResultSchema = z.intersection(
-  z.union([
-    CallToolUnstructuredResultSchema,
-    CallToolStructuredResultSchema,
-  ]),
-  // For backwards compatibility with older protocol versions
-  // we always return the content field, even if the tool defines an outputSchema.
-  z.object({ content: ContentListSchema })
-);
+export const CallToolResultSchema = z.union([
+  CallToolUnstructuredResultSchema,
+  CallToolStructuredResultSchema,
+]);
 
 
 /**

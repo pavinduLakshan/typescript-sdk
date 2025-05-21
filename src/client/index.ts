@@ -459,15 +459,6 @@ export class Client<
             `Failed to validate structured content: ${error instanceof Error ? error.message : String(error)}`
           );
         }
-        // for compatibility, serialize structuredContent to content if none was provided
-        if (!result.content) {
-          result.content = [
-            {
-              type: "text",
-              text: JSON.stringify(result.structuredContent, null, 2),
-            },
-          ];
-        }
       }
     }
 
