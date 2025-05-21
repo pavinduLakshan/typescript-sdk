@@ -744,7 +744,7 @@ describe("OAuth Authorization", () => {
 
       // Call the auth function
       const result = await auth(mockProvider, {
-        resourceServerUrl: "https://resource.example.com",
+        serverUrl: "https://resource.example.com",
       });
 
       // Verify the result

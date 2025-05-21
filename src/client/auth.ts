@@ -84,20 +84,20 @@ export class UnauthorizedError extends Error {
  */
 export async function auth(
   provider: OAuthClientProvider,
-  { resourceServerUrl,
+  { serverUrl,
     authorizationCode,
     scope,
     resourceMetadataUrl
   }: {
-    resourceServerUrl: string | URL;
+    serverUrl: string | URL;
     authorizationCode?: string;
     scope?: string;
     resourceMetadataUrl?: URL }): Promise<AuthResult> {
 
-  let authorizationServerUrl = resourceServerUrl;
+  let authorizationServerUrl = serverUrl;
   try {
     const resourceMetadata = await discoverOAuthProtectedResourceMetadata(
-      resourceMetadataUrl || resourceServerUrl);
+      resourceMetadataUrl || serverUrl);
 
     if (resourceMetadata.authorization_servers && resourceMetadata.authorization_servers.length > 0) {
       authorizationServerUrl = resourceMetadata.authorization_servers[0];
@@ -212,7 +212,7 @@ export function extractResourceMetadataUrl(res: Response): URL | undefined {
  * return `undefined`. Any other errors will be thrown as exceptions.
  */
 export async function discoverOAuthProtectedResourceMetadata(
-  resourceServerUrl: string | URL,
+  serverUrl: string | URL,
   opts?: { protocolVersion?: string, resourceMetadataUrl?: string | URL },
 ): Promise<OAuthProtectedResourceMetadata> {
 
@@ -220,7 +220,7 @@ export async function discoverOAuthProtectedResourceMetadata(
   if (opts?.resourceMetadataUrl) {
     url = new URL(opts?.resourceMetadataUrl);
   } else {
-    url = new URL("/.well-known/oauth-protected-resource", resourceServerUrl);
+    url = new URL("/.well-known/oauth-protected-resource", serverUrl);
   }
 
   let response: Response;
