@@ -14,7 +14,7 @@ import {
   CallToolResultSchema,
   ListToolsResultSchema
 } from '../../types.js';
-import { OAuthClientProvider } from 'src/client/auth.js';
+import { OAuthClientProvider, UnauthorizedError } from 'src/client/auth.js';
 
 // Configuration
 const DEFAULT_SERVER_URL = 'http://localhost:3000/mcp';
@@ -117,7 +117,9 @@ class InteractiveOAuthClient {
       }
     });
   }
-
+  // this is just an example of how to use the OAuth flow
+  // in a real application you would probably want to use a more robust
+  // method of handling the callback and storing the tokens
   private async waitForOAuthCallback(): Promise<string> {
     return new Promise<string>((resolve, reject) => {
       const server = createServer((req, res) => {
@@ -174,10 +176,38 @@ class InteractiveOAuthClient {
     });
   }
 
+  private async attemptConnection(oauthProvider: InMemoryOAuthClientProvider): Promise<void> {
+    console.log('🚢 Creating transport with OAuth provider...');
+    const baseUrl = new URL(this.serverUrl);
+    const transport = new StreamableHTTPClientTransport(baseUrl, {
+      authProvider: oauthProvider
+    });
+    console.log('🚢 Transport created');
+
+    try {
+      console.log('🔌 Attempting connection (this will trigger OAuth redirect)...');
+      await this.client!.connect(transport);
+      console.log('✅ Connected successfully');
+    } catch (error: any) {
+      if (error instanceof UnauthorizedError) {
+        console.log('🔐 OAuth required - waiting for authorization...');
+        const callbackPromise = this.waitForOAuthCallback();
+        // Wait for the authorization code from the callback
+        const authCode = await callbackPromise;
+        await transport.finishAuth(authCode);
+        console.log('🔐 Authorization code received:', authCode);
+        console.log('🔌 Reconnecting with authenticated transport...');
+        await this.attemptConnection(oauthProvider);
+      } else {
+        console.error('❌ Connection failed with non-auth error:', error);
+        throw error;
+      }
+    }
+  }
+
   async connect(): Promise<void> {
     console.log(`🔗 Attempting to connect to ${this.serverUrl}...`);
 
-    // Create OAuth client metadata
     const clientMetadata: OAuthClientMetadata = {
       client_name: 'Simple OAuth MCP Client',
       redirect_uris: [CALLBACK_URL],
@@ -199,15 +229,6 @@ class InteractiveOAuthClient {
     );
     console.log('🔐 OAuth provider created');
 
-    // Create transport with OAuth provider
-    console.log('🚢 Creating transport with OAuth provider...');
-    const baseUrl = new URL(this.serverUrl);
-    const transport = new StreamableHTTPClientTransport(baseUrl, {
-      authProvider: oauthProvider
-    });
-    console.log('🚢 Transport created');
-
-    // Initialize client
     console.log('👤 Creating MCP client...');
     this.client = new Client({
       name: 'simple-oauth-client',
@@ -215,43 +236,9 @@ class InteractiveOAuthClient {
     }, { capabilities: {} });
     console.log('👤 Client created');
 
-    // Start the OAuth flow by attempting connection, which will trigger redirectToAuthorization
     console.log('🔐 Starting OAuth flow...');
 
-    // Start callback server and connection attempt in parallel
-    const callbackPromise = this.waitForOAuthCallback();
-
-    try {
-      console.log('🔌 Attempting connection (this will trigger OAuth redirect)...');
-      await this.client.connect(transport);
-      console.log('✅ Connected without OAuth (no auth required)');
-    } catch (error: any) {
-      if (error.message?.includes('Unauthorized') || error.message?.includes('401')) {
-        console.log('🔐 OAuth required - waiting for authorization...');
-
-        // Wait for the authorization code from the callback
-        const authCode = await callbackPromise;
-
-        // Complete OAuth flow using finishAuth
-        console.log('🔄 Completing OAuth with authorization code...');
-        await transport.finishAuth(authCode);
-        console.log('✅ OAuth completed successfully');
-
-        // Create a new transport for the authenticated connection
-        console.log('🔌 Creating new authenticated transport...');
-        const authenticatedTransport = new StreamableHTTPClientTransport(baseUrl, {
-          authProvider: oauthProvider
-        });
-
-        // Connect with the new authenticated transport
-        console.log('🔌 Connecting with authenticated transport...');
-        await this.client.connect(authenticatedTransport);
-        console.log('✅ Connected with OAuth authentication');
-      } else {
-        console.error('❌ Connection failed with non-auth error:', error);
-        throw error;
-      }
-    }
+    await this.attemptConnection(oauthProvider);
 
     // Start interactive loop
     await this.interactiveLoop();
