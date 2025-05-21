@@ -668,9 +668,6 @@ describe("SSEClientTransport", () => {
         currentTokens = tokens;
       });
 
-      // Create server that accepts SSE but returns 401 on POST with expired token
-      resourceServer.close();
-
       // Create server that returns 401 for expired token, then accepts new token
       resourceServer.close();
       authServer.close();

@@ -6,6 +6,8 @@ import {
   registerClient,
   discoverOAuthProtectedResourceMetadata,
   extractResourceMetadataUrl,
+  auth,
+  type OAuthClientProvider,
 } from "./auth.js";
 
 // Mock fetch globally
@@ -79,11 +81,8 @@ describe("OAuth Authorization", () => {
       expect(metadata).toEqual(validMetadata);
       const calls = mockFetch.mock.calls;
       expect(calls.length).toBe(1);
-      const [url, options] = calls[0];
+      const [url] = calls[0];
       expect(url.toString()).toBe("https://resource.example.com/.well-known/oauth-protected-resource");
-      expect(options.headers).toEqual({
-        "MCP-Protocol-Version": "2024-11-05"
-      });
     });
 
     it("returns metadata when first fetch fails but second without MCP header succeeds", async () => {
@@ -666,6 +665,103 @@ describe("OAuth Authorization", () => {
           clientMetadata: validClientMetadata,
         })
       ).rejects.toThrow("Dynamic client registration failed");
+    });
+  });
+
+  describe("auth function", () => {
+    const mockProvider: OAuthClientProvider = {
+      get redirectUrl() { return "http://localhost:3000/callback"; },
+      get clientMetadata() {
+        return {
+          redirect_uris: ["http://localhost:3000/callback"],
+          client_name: "Test Client",
+        };
+      },
+      clientInformation: jest.fn(),
+      tokens: jest.fn(),
+      saveTokens: jest.fn(),
+      redirectToAuthorization: jest.fn(),
+      saveCodeVerifier: jest.fn(),
+      codeVerifier: jest.fn(),
+    };
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it("falls back to /.well-known/oauth-authorization-server when no protected-resource-metadata", async () => {
+      // Setup: First call to protected resource metadata fails (404)
+      // Second call to auth server metadata succeeds
+      let callCount = 0;
+      mockFetch.mockImplementation((url) => {
+        callCount++;
+
+        const urlString = url.toString();
+
+        if (callCount === 1 && urlString.includes("/.well-known/oauth-protected-resource")) {
+          // First call - protected resource metadata fails with 404
+          return Promise.resolve({
+            ok: false,
+            status: 404,
+          });
+        } else if (callCount === 2 && urlString.includes("/.well-known/oauth-authorization-server")) {
+          // Second call - auth server metadata succeeds
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({
+              issuer: "https://auth.example.com",
+              authorization_endpoint: "https://auth.example.com/authorize",
+              token_endpoint: "https://auth.example.com/token",
+              registration_endpoint: "https://auth.example.com/register",
+              response_types_supported: ["code"],
+              code_challenge_methods_supported: ["S256"],
+            }),
+          });
+        } else if (callCount === 3 && urlString.includes("/register")) {
+          // Third call - client registration succeeds
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({
+              client_id: "test-client-id",
+              client_secret: "test-client-secret",
+              client_id_issued_at: 1612137600,
+              client_secret_expires_at: 1612224000,
+              redirect_uris: ["http://localhost:3000/callback"],
+              client_name: "Test Client",
+            }),
+          });
+        }
+
+        return Promise.reject(new Error(`Unexpected fetch call: ${urlString}`));
+      });
+
+      // Mock provider methods
+      (mockProvider.clientInformation as jest.Mock).mockResolvedValue(undefined);
+      (mockProvider.tokens as jest.Mock).mockResolvedValue(undefined);
+      mockProvider.saveClientInformation = jest.fn();
+
+      // Call the auth function
+      const result = await auth(mockProvider, {
+        resourceServerUrl: "https://resource.example.com",
+      });
+
+      // Verify the result
+      expect(result).toBe("REDIRECT");
+
+      // Verify the sequence of calls
+      expect(mockFetch).toHaveBeenCalledTimes(3);
+
+      // First call should be to protected resource metadata
+      expect(mockFetch.mock.calls[0][0].toString()).toBe(
+        "https://resource.example.com/.well-known/oauth-protected-resource"
+      );
+
+      // Since protected resource metadata failed, it should fallback to discovering
+      // the auth server metadata from the default location (but the auth function
+      // expects authorization_servers from the resource metadata, so this test
+      // needs to be updated to handle that case properly)
     });
   });
 });

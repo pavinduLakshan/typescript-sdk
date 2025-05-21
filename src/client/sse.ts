@@ -1,8 +1,7 @@
 import { EventSource, type ErrorEvent, type EventSourceInit } from "eventsource";
 import { Transport } from "../shared/transport.js";
 import { JSONRPCMessage, JSONRPCMessageSchema } from "../types.js";
-import { auth, AuthResult, discoverOAuthProtectedResourceMetadata, extractResourceMetadataUrl, OAuthClientProvider, UnauthorizedError } from "./auth.js";
-import { OAuthProtectedResourceMetadata } from "../shared/auth.js";
+import { auth, AuthResult, extractResourceMetadataUrl, OAuthClientProvider, UnauthorizedError } from "./auth.js";
 
 export class SseError extends Error {
   constructor(
@@ -59,7 +58,7 @@ export class SSEClientTransport implements Transport {
   private _endpoint?: URL;
   private _abortController?: AbortController;
   private _url: URL;
-  private _protectedResourceMetadata: OAuthProtectedResourceMetadata | undefined;
+  private _resourceMetadataUrl?: URL;
   private _eventSourceInit?: EventSourceInit;
   private _requestInit?: RequestInit;
   private _authProvider?: OAuthClientProvider;
@@ -73,7 +72,7 @@ export class SSEClientTransport implements Transport {
     opts?: SSEClientTransportOptions,
   ) {
     this._url = url;
-    this._protectedResourceMetadata = undefined;
+    this._resourceMetadataUrl = undefined;
     this._eventSourceInit = opts?.eventSourceInit;
     this._requestInit = opts?.requestInit;
     this._authProvider = opts?.authProvider;
@@ -86,7 +85,7 @@ export class SSEClientTransport implements Transport {
 
     let result: AuthResult;
     try {
-      result = await auth(this._authProvider, { resourceServerUrl: this._url, protectedResourceMetadata: this._protectedResourceMetadata });
+      result = await auth(this._authProvider, { resourceServerUrl: this._url, resourceMetadataUrl: this._resourceMetadataUrl });
     } catch (error) {
       this.onerror?.(error as Error);
       throw error;
@@ -196,7 +195,7 @@ export class SSEClientTransport implements Transport {
       throw new UnauthorizedError("No auth provider");
     }
 
-    const result = await auth(this._authProvider, { resourceServerUrl: this._url, authorizationCode, protectedResourceMetadata: this._protectedResourceMetadata });
+    const result = await auth(this._authProvider, { resourceServerUrl: this._url, authorizationCode, resourceMetadataUrl: this._resourceMetadataUrl });
     if (result !== "AUTHORIZED") {
       throw new UnauthorizedError("Failed to authorize");
     }
@@ -229,12 +228,9 @@ export class SSEClientTransport implements Transport {
       if (!response.ok) {
         if (response.status === 401 && this._authProvider) {
 
-          const resourceMetadataUrl = extractResourceMetadataUrl(response);
-          this._protectedResourceMetadata = await discoverOAuthProtectedResourceMetadata(this._url, {
-            resourceMetadataUrl: resourceMetadataUrl
-          })
+          this._resourceMetadataUrl = extractResourceMetadataUrl(response);
 
-          const result = await auth(this._authProvider, { resourceServerUrl: this._url, protectedResourceMetadata: this._protectedResourceMetadata });
+          const result = await auth(this._authProvider, { resourceServerUrl: this._url, resourceMetadataUrl: this._resourceMetadataUrl });
           if (result !== "AUTHORIZED") {
             throw new UnauthorizedError();
           }

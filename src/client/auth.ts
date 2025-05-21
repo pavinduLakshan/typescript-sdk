@@ -87,18 +87,24 @@ export async function auth(
   { resourceServerUrl,
     authorizationCode,
     scope,
-  protectedResourceMetadata }: {
+    resourceMetadataUrl
+  }: {
     resourceServerUrl: string | URL;
     authorizationCode?: string;
     scope?: string;
-    protectedResourceMetadata?: OAuthProtectedResourceMetadata }): Promise<AuthResult> {
+    resourceMetadataUrl?: URL }): Promise<AuthResult> {
 
-  let resourceMetadata = protectedResourceMetadata ?? await discoverOAuthProtectedResourceMetadata(resourceServerUrl);
+  let authorizationServerUrl = resourceServerUrl;
+  try {
+    const resourceMetadata = await discoverOAuthProtectedResourceMetadata(
+      resourceMetadataUrl || resourceServerUrl);
 
-  if (resourceMetadata.authorization_servers === undefined || resourceMetadata.authorization_servers.length === 0) {
-    throw new Error("Server does not specify any authorization servers.");
+    if (resourceMetadata.authorization_servers && resourceMetadata.authorization_servers.length > 0) {
+      authorizationServerUrl = resourceMetadata.authorization_servers[0];
+    }
+  } catch (error) {
+    console.warn("Could not load OAuth Protected Resource metadata, falling back to /.well-known/oauth-authorization-server", error)
   }
-  const authorizationServerUrl = resourceMetadata.authorization_servers[0];
 
   const metadata = await discoverOAuthMetadata(authorizationServerUrl);
 
