@@ -70,7 +70,13 @@ npx tsx src/examples/server/simpleStreamableHttp.ts
 
 # To add a demo of authentication to this example, use:
 npx tsx src/examples/server/simpleStreamableHttp.ts --oauth
+
+
+npx tsx src/examples/client/simpleOAuthClient.js
+
 ```
+
+
 
 ##### JSON Response Mode Server
 
