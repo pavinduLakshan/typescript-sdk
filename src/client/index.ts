@@ -185,6 +185,11 @@ export class Client<
     return this._serverCapabilities;
   }
 
+  setServerCapabilities(
+    capabilities: ServerCapabilities | undefined,
+  ): void {
+    this._serverCapabilities = capabilities;
+  }
   /**
    * After initialization has completed, this will be populated with information about the server's name and version.
    */
@@ -192,11 +197,23 @@ export class Client<
     return this._serverVersion;
   }
 
+  setServerVersion(serverInfo: Implementation | undefined): void {
+    this._serverVersion = serverInfo;
+  }
+
+  getClientInfo(): Implementation {
+    return this._clientInfo;
+  }
+
   /**
    * After initialization has completed, this may be populated with information about the server's instructions.
    */
   getInstructions(): string | undefined {
     return this._instructions;
+  }
+
+  setInstructions(instructions: string | undefined): void {
+    this._instructions = instructions;
   }
 
   protected assertCapabilityForMethod(method: RequestT["method"]): void {

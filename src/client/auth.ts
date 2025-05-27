@@ -110,11 +110,13 @@ export async function auth(
   } catch (error) {
     console.warn("Could not load OAuth Protected Resource metadata, falling back to /.well-known/oauth-authorization-server", error)
   }
-
+console.log(authorizationServerUrl, "authorizationServerUrl")
   const metadata = await discoverOAuthMetadata(authorizationServerUrl);
 
   // Handle client registration if needed
   let clientInformation = await Promise.resolve(provider.clientInformation());
+
+  console.log(clientInformation, "clientInformation")
   if (!clientInformation) {
     if (authorizationCode !== undefined) {
       throw new Error("Existing OAuth client information is required when exchanging an authorization code");
@@ -269,7 +271,7 @@ export async function discoverOAuthMetadata(
   authorizationServerUrl: string | URL,
   opts?: { protocolVersion?: string },
 ): Promise<OAuthMetadata | undefined> {
-  const url = new URL("/.well-known/oauth-authorization-server", authorizationServerUrl);
+  const url = authorizationServerUrl + "/.well-known/openid-configuration";
   let response: Response;
   try {
     response = await fetch(url, {

@@ -163,8 +163,10 @@ export class StreamableHTTPClientTransport implements Transport {
 
   private async _commonHeaders(): Promise<Headers> {
     const headers: HeadersInit = {};
+    console.log(this._authProvider,"authprovider")
     if (this._authProvider) {
       const tokens = await this._authProvider.tokens();
+      console.log("MCP server auth token: ", tokens)
       if (tokens) {
         headers["Authorization"] = `Bearer ${tokens.access_token}`;
       }
@@ -382,6 +384,8 @@ export class StreamableHTTPClientTransport implements Transport {
       }
 
       const headers = await this._commonHeaders();
+
+      console.log(headers)
       headers.set("content-type", "application/json");
       headers.set("accept", "application/json, text/event-stream");
 

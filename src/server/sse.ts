@@ -94,6 +94,8 @@ export class SSEServerTransport implements Transport {
       if (ct.type !== "application/json") {
         throw new Error(`Unsupported content-type: ${ct}`);
       }
+console.log("ct type", ct)
+console.log("req", req)
 
       body = parsedBody ?? await getRawBody(req, {
         limit: MAXIMUM_MESSAGE_SIZE,
